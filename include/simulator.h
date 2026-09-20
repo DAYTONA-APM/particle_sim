@@ -182,3 +182,5 @@ void sim_solve_collisions(SimWorld *world);
  * Step 5: Clamps particle coordinates within bounds.
  */
 void sim_solve_boundaries(SimWorld *world);
+
+#endif 
