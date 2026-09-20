@@ -147,25 +147,115 @@ void sim_world_step(SimWorld *world, float dt)
 
 }
 
+/* goal: store particles in memroy, for the world to simulate
+ *
+ * check if world->count == world->capacity;
+ * 		if full, realloc world->particles and world->grid.particle_next
+ *
+ * calc prev_pos using initial velocity and a nominal timestep so Verlet
+ * integration starts with that velocity
+ *
+ * initialise particle properties & increment world count
+ *
+ * return the assigned particle index */
+
 int sim_world_add_particle(SimWorld *world, vector pos, vector initial_velocity,
                            float radius, float mass, uint32_t color)
-{
-    /* TODO: Add particle to world->particles, reallocating if count == capacity */
-    (void)world;
-    (void)pos;
-    (void)initial_velocity;
-    (void)radius;
-    (void)mass;
-    (void)color;
-    return -1;
+{    
+	Particle *temp_part;
+	int *temp_next;
+	Particle new_part;
+	float nominal_dt;
+	float sub_dt;
+	int substeps;
+	size_t new_capacity;
+
+
+	if (!world)  {
+		fprintf(stderr, "invalid input values\n");
+		return -1;
+	}
+
+	if (world->count == world->capacity) {
+		new_capacity = world->capacity * 2;
+		temp_part = realloc(world->particles, sizeof(Particle) * new_capacity);
+		if (!temp_part) {
+			fprintf(stderr, "unable to resize particle array\n");
+			return FALSE;
+		}
+		world->particles = temp_part;
+
+		temp_next = realloc(world->grid.particle_next,
+			   	sizeof(int) * new_capacity);
+		if (!temp_next) {
+			fprintf(stderr, "unable to resize adjacent particle memory \n");
+			return FALSE;
+		}
+		world->grid.particle_next = temp_next;
+		world->capacity = new_capacity;
+	}	
+
+	/* calculation of prev_pos */
+	nominal_dt = (1.0f/ 60.0f);
+	substeps = (world->substeps > 0) ? world->substeps : 1;
+	sub_dt = nominal_dt / (float)substeps;
+
+	new_part.prev_pos.x = pos.x - initial_velocity.x * sub_dt;
+	new_part.prev_pos.y = pos.y - initial_velocity.y * sub_dt;
+
+	/* filling out the rest of the attributes */
+	new_part.pos.x = pos.x;
+	new_part.pos.y = pos.y;
+
+	new_part.radius = radius;
+	new_part.mass = mass;
+	new_part.color = color;
+
+	new_part.accel.x = 0.0f;
+	new_part.accel.y = 0.0f;
+
+	/* integrate into particle array */
+	world->particles[world->count] = new_part;
+	world->count++;
+
+    return world->count-1; /* index of new particle */
 }
 
+/* goal: accumulate downward force for each substep
+ *
+ * loop over all particles --> 0 < i < world->count
+ * add world->gravity to each particle's acceleration
+ */
 void sim_world_apply_gravity(SimWorld *world)
 {
+	size_t j; /* account for count of all particles */
+	
     /* TODO: Accumulate world->gravity into each particle's accel */
-    (void)world;
+    if (!world || world->count == 0) {
+		fprintf(stderr, "unable to apply gravity\n");
+		return;
+	}
+
+	/* only one loop needed, the substeps applies the data world->substeps
+	 * times. aapplying it in a loop is a double step */
+	for (j = 0; j < world->count; j++) {
+		world->particles[j].accel.x += world->gravity.x;
+		world->particles[j].accel.y += world->gravity.y;
+	}
+		
 }
 
+/* hash particles to the spatial grid
+ *
+ * reset world->grid.cell_heads to -1 (use memset)
+ *
+ * for each particle, calc the int cell coord(col, row) based on the cell size
+ *
+ * clamp (col, row) so particles on the edge don't cause an out of bounds cell
+ * idx
+ *
+ * cell_idx = col + row * grid_cols
+ */
 void sim_grid_rebuild(SimWorld *world)
 {
     /* TODO: Re-index particles into grid buckets */

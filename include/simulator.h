@@ -21,7 +21,7 @@ typedef struct {
 	vector accel;
 	float radius;
 	float mass;
-	size_t color;
+	uint32_t color;
 } Particle;
 
 /*
