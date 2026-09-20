@@ -1,0 +1,23 @@
+# Object and dependency files
+*.o
+*.obj
+*.d
+
+# Compiled executables
+bin/
+build/
+simulator
+simulator.exe
+*.out
+
+# Debug symbols & profiling
+*.dSYM/
+*.su
+*.idb
+*.pdb
+
+# OS & Editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
