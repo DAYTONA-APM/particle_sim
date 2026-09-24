@@ -121,7 +121,7 @@ void sim_world_step(SimWorld *world, float dt)
 	for (i = 0; i < world->substeps; i++) {
 		sim_world_apply_gravity(world); /* step A */
 
-		for (j = 0; j < world->count-1; j++) {
+		for (j = 0; j < world->count; j++) {
 			p = &world->particles[j];
 
 			vel_x = p->pos.x - p->prev_pos.x;
@@ -271,5 +271,38 @@ void sim_solve_collisions(SimWorld *world)
 void sim_solve_boundaries(SimWorld *world)
 {
     /* TODO: Clamp particles to container edges */
-    (void)world;
+	float radius;
+	float min_x;
+	float max_x;
+	float min_y;
+	float max_y;
+	size_t i;
+	Particle *p;
+
+	if (!world || world->count == 0) {
+		return;
+	}
+
+	/* so if the boumds are passed, reset it to the bound itself */
+	min_x = 0.0;
+	max_x = world->bounds_width;
+	min_y = 0.0;
+	max_y = world->bounds_height;
+
+	for (i = 0; i < world->count; i++) {
+		p = &world->particles[i];
+		radius = p->radius;
+
+		/* horizontal boundaries check */
+		if (p->pos.x < min_x + radius)
+			p->pos.x = min_x + radius;
+		else if (p->pos.x > max_x - radius)
+			p->pos.x = max_x - radius;
+
+		if (p->pos.y < min_y + radius)
+			p->pos.y = min_y + radius;
+		else if (p->pos.y > max_y - radius)
+			p->pos.y = max_y - radius;
+
+	}	
 }
