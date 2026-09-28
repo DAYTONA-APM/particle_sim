@@ -1,6 +1,13 @@
 #include "simulator.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <math.h>
+
+static const int NEIGHBOR_OFFSETS[9][2] = {
+    {-1, -1}, { 0, -1}, { 1, -1},  /* Top row    */
+    {-1,  0}, { 0,  0}, { 1,  0},  /* Middle row */
+    {-1,  1}, { 0,  1}, { 1,  1}   /* Bottom row */
+};
 
 int sim_world_init(SimWorld *world, size_t initial_capacity,
 		float width, float height, float cell_size)
@@ -313,8 +320,93 @@ void sim_grid_rebuild(SimWorld *world)
 
 void sim_solve_collisions(SimWorld *world)
 {
-    /* TODO: Detect and resolve overlaps */
-    (void)world;
+    size_t i;
+    int j;
+    int k;
+    int col;
+    int row;
+    int n_col;
+    int n_row;
+    int cell_idx;
+    Particle *p1;
+    Particle *p2;
+    float dx;
+    float dy;
+    float dist_sq;
+    float min_dist;
+    float dist;
+    float overlap;
+    float nx;
+    float ny;
+    float m_total;
+    float ratio1;
+    float ratio2;
+
+    if (!world || world->count < 2) {
+        return;
+    }
+
+    for (i = 0; i < world->count; i++) {
+        p1 = &world->particles[i];
+
+        col = (int)(p1->pos.x / world->grid.cell_size);
+        row = (int)(p1->pos.y / world->grid.cell_size);
+
+        /* Check all 9 cells in the Moore neighborhood */
+        for (k = 0; k < 9; k++) {
+            n_col = col + NEIGHBOR_OFFSETS[k][0];
+            n_row = row + NEIGHBOR_OFFSETS[k][1];
+
+            /* Skip cells outside the grid boundary */
+            if (n_col < 0 || n_col >= world->grid.cols ||
+                n_row < 0 || n_row >= world->grid.rows) {
+                continue;
+            }
+
+            cell_idx = n_col + n_row * world->grid.cols;
+            j = world->grid.cell_heads[cell_idx];
+
+            /* Traverse the linked list of particles in cell_idx */
+            while (j != -1) {
+                /* Only test pairs where j > i to avoid self-collision and duplicate checks */
+                if ((size_t)j > i) {
+                    p2 = &world->particles[j];
+
+                    dx = p1->pos.x - p2->pos.x;
+                    dy = p1->pos.y - p2->pos.y;
+                    min_dist = p1->radius + p2->radius;
+                    dist_sq = dx * dx + dy * dy;
+
+                    if (dist_sq < min_dist * min_dist && dist_sq > 0.000001f) {
+                        dist = (float)sqrt((double)dist_sq);
+                        overlap = min_dist - dist;
+
+                        /* Normal vector from p2 towards p1 */
+                        nx = dx / dist;
+                        ny = dy / dist;
+
+                        /* Mass weighting: heavier particle moves less */
+                        m_total = p1->mass + p2->mass;
+                        if (m_total <= 0.0f) {
+                            ratio1 = 0.5f;
+                            ratio2 = 0.5f;
+                        } else {
+                            ratio1 = p2->mass / m_total;
+                            ratio2 = p1->mass / m_total;
+                        }
+
+                        /* Push apart along contact normal */
+                        p1->pos.x += nx * overlap * ratio1;
+                        p1->pos.y += ny * overlap * ratio1;
+
+                        p2->pos.x -= nx * overlap * ratio2;
+                        p2->pos.y -= ny * overlap * ratio2;
+                    }
+                }
+                j = world->grid.particle_next[j];
+            }
+        }
+    }
 }
 
 void sim_solve_boundaries(SimWorld *world)
