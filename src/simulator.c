@@ -117,8 +117,12 @@ void sim_world_step(SimWorld *world, float dt)
 	float curr_y;
 	Particle *p;
 
-    if (!world || world->count == 0 || dt <= 0.0f) {
+    if (!world || dt <= 0.0f) {
 		fprintf(stderr, "invalid input\n");
+		return;
+	}
+
+	if (world->count == 0) {
 		return;
 	}
 
