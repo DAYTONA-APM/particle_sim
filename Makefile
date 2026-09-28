@@ -1,39 +1,25 @@
 CC = clang
-CFLAGS = -std=c89 -pedantic -Wall -Wextra -Iinclude
-LDFLAGS = -lm
+CFLAGS = -std=c89 -pedantic -Wall -Wextra -Iinclude $(shell pkg-config --cflags raylib 2>/dev/null || echo "-I/opt/homebrew/include")
+LDFLAGS = $(shell pkg-config --libs raylib 2>/dev/null || echo "-L/opt/homebrew/lib -lraylib") -framework OpenGL -framework Cocoa -framework IOKit -framework CoreVideo -lm
 
-SRC_DIR = src
-INC_DIR = include
-BUILD_DIR = build
-BIN_DIR = bin
-
-SRCS = $(wildcard $(SRC_DIR)/*.c)
-OBJS = $(patsubst $(SRC_DIR)/%.c, $(BUILD_DIR)/%.o, $(SRCS))
-TARGET = $(BIN_DIR)/particle_sim
-
-.PHONY: all clean run
+SRC = src/simulator.c src/main.c
+OBJ = $(SRC:src/%.c=build/%.o)
+TARGET = bin/particle_sim
 
 all: $(TARGET)
 
-# Link all object files into the final executable
-$(TARGET): $(OBJS) | $(BIN_DIR)
-	$(CC) $(OBJS) -o $@ $(LDFLAGS)
+$(TARGET): $(OBJ)
+	@mkdir -p bin
+	$(CC) $(OBJ) -o $@ $(LDFLAGS)
 
-# Compile each .c translation unit into an object file
-$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c | $(BUILD_DIR)
+build/%.o: src/%.c
+	@mkdir -p build
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Create output directories if they do not exist
-$(BUILD_DIR):
-	mkdir -p $(BUILD_DIR)
-
-$(BIN_DIR):
-	mkdir -p $(BIN_DIR)
-
-# Run the compiled binary
 run: $(TARGET)
 	./$(TARGET)
 
-# Remove build artifacts
 clean:
-	rm -rf $(BUILD_DIR) $(BIN_DIR)
+	rm -rf build bin
+
+.PHONY: all run clean
