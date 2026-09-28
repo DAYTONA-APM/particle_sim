@@ -255,11 +255,60 @@ void sim_world_apply_gravity(SimWorld *world)
  * idx
  *
  * cell_idx = col + row * grid_cols
+ *
+ * before partricles resolve overlaps, we need to place themm within the
+ * uniform spatiaal grid.
+ *
+ * world->grid.cell_heads --> array of size rowss * cols. each element has the
+ * index of the first paarticle ini that cell. or -1 if the cell is empty
+ *
+ * world->grid.particle_next --> array of size "capacity" that stores the index
+ * of the next particle in the same cell's linked list
+ *
+ * ide: reset all entries in the cell_heads array to -1 (empty)
  */
 void sim_grid_rebuild(SimWorld *world)
 {
-    /* TODO: Re-index particles into grid buckets */
-    (void)world;
+	int num_cells;
+	size_t i;
+	int c;
+	Particle p;
+	int col;
+	int row;
+	int cell_index;
+
+	if (!world || world->count == 0)
+		return;
+
+	num_cells = world->grid.cols * world->grid.rows;
+
+	for (c = 0; c < num_cells; c++)
+		world->grid.cell_heads[c] = -1;
+
+	for (i = 0; i < world->count; i++) {
+		p = world->particles[i];
+
+		col = (int) (p.pos.x / world->grid.cell_size);
+		row = (int) (p.pos.y / world->grid.cell_size);
+
+		/* clamp to the dimensions of the grid */
+
+		if (col < 0)
+			col = 0;
+		if (col >= world->grid.cols)
+			col = world->grid.cols -1;
+
+		if (row < 0)
+			row = 0;
+		if (row >= world->grid.rows)
+			row = world->grid.rows -1;
+
+		cell_index = col + row * world->grid.cols;
+
+		world->grid.particle_next[i] = world->grid.cell_heads[cell_index];
+		world->grid.cell_heads[cell_index] = i;
+
+	}
 }
 
 void sim_solve_collisions(SimWorld *world)
