@@ -135,8 +135,7 @@ int main(void)
         EndDrawing();
 
 		/* Diagnostic: Check why we are exiting after Frame 0 */
-        if (WindowShouldClose()) {
-            printf("[DEBUG] Window marked to close after EndDrawing!\n");
+        if (WindowShouldClose()) { 
             printf("[DEBUG] Key pressed: %d\n", GetKeyPressed());
         }
     }
